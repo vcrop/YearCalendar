@@ -24,14 +24,24 @@ public final class YearCalendar {
     }
 
     public static YearCalendar getInstance(int year, int columns) {
+        if (columns < 1 || columns > 12)
+            throw new IllegalArgumentException("Value columns must be between 1 and 12 inclusive.");
         YearCalendar yearCalendar = new YearCalendar();
-        yearCalendar.view = yearCalendar.rowRows(LocalDate.of(year, 1, 1), columns);
+        var localDate = LocalDate.of(year, 1, 1);
+        yearCalendar.view = String.join("\n",
+                yearCalendar.year(localDate, columns),
+                yearCalendar.rowRows(localDate, columns)
+        );
         return yearCalendar;
     }
 
+    private String year(LocalDate localDate, int columns) {
+        return String.format("%" + (30 * columns - 2) + "s", localDate.getYear());
+    }
+
     private String rowRows(LocalDate localDate, int columns) {
-        return localDate.datesUntil(localDate.plusMonths(12L), Period.ofMonths(columns))
-                .map(ld -> rowMonthsWithDescription(ld, columns))
+        return IntStream.iterate(0, i -> i < 12, i -> i + columns)
+                .mapToObj(i -> rowMonthsWithDescription(localDate.plusMonths(i), Math.min(columns, 12 - i)))
                 .collect(Collectors.joining("\n"));
     }
 
@@ -44,20 +54,10 @@ public final class YearCalendar {
         );
     }
 
-    private String rowSeparators(int columns) {
-        return Stream.generate(this::separator)
-                .limit(columns)
-                .collect(Collectors.joining(" "));
-    }
-
-    private String separator() {
-        return String.format("%28s", "=".repeat(27));
-    }
-
     private String rowMonthNames(LocalDate localDate, int columns) {
         return localDate.datesUntil(localDate.plusMonths(columns), Period.ofMonths(1))
                 .map(this::monthName)
-                .collect(Collectors.joining(" "));
+                .collect(Collectors.joining("  "));
     }
 
     private String monthName(LocalDate localDate) {
@@ -68,7 +68,7 @@ public final class YearCalendar {
     private String rowDaysOfWeek(int columns) {
         return Stream.generate(this::daysOfWeek)
                 .limit(columns)
-                .collect(Collectors.joining(" "));
+                .collect(Collectors.joining("  "));
     }
 
     private String daysOfWeek() {
@@ -77,6 +77,16 @@ public final class YearCalendar {
                         .map(daysOfWeek -> daysOfWeek.getDisplayName(TextStyle.SHORT, Locale.US))
                         .collect(Collectors.joining(" "))
         );
+    }
+
+    private String rowSeparators(int columns) {
+        return Stream.generate(this::separator)
+                .limit(columns)
+                .collect(Collectors.joining("  "));
+    }
+
+    private String separator() {
+        return String.format("%28s", "=".repeat(27));
     }
 
     private String rowMonths(LocalDate localDate, int columns) {
@@ -88,7 +98,7 @@ public final class YearCalendar {
     private String rowWeeks(LocalDate localDate, int columns, int week) {
         return localDate.datesUntil(localDate.plusMonths(columns), Period.ofMonths(1))
                 .map(ld -> weekInMonth(ld, ld.getMonth(), week))
-                .collect(Collectors.joining(" "));
+                .collect(Collectors.joining("  "));
     }
 
     private String weekInMonth(LocalDate localDate, Month month, int week) {
@@ -105,9 +115,4 @@ public final class YearCalendar {
         return view;
     }
 
-    public static void main(String[] args) {
-        System.out.println(
-                YearCalendar.getInstance(LocalDate.now().getYear(), 3)
-        );
-    }
 }
